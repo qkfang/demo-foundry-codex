@@ -1,0 +1,27 @@
+{
+    "inputs": [
+        {
+            "id": "search-api-key",
+            "type": "promptString",
+            "description": "Azure AI Search API key for foundry-iq MCP server",
+            "password": true
+        }
+    ],
+    "servers": {
+        "microsoft-learn": {
+            "type": "http",
+            "url": "https://learn.microsoft.com/api/mcp"
+        },
+        "github": {
+            "type": "http",
+            "url": "https://api.githubcopilot.com/mcp/"
+        },
+        "foundry-iq": {
+            "type": "http",
+            "url": "https://melt-search.search.windows.net/knowledgebases/melt-kb/mcp?api-version=2025-11-01-Preview",
+            "headers": {
+                "api-key": "${input:search-api-key}"
+            }
+        }
+    }
+}
