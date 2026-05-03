@@ -1,13 +1,5 @@
 $ErrorActionPreference = 'Stop'
 
-$resourceGroup = 'rg-fdrycodex'
-$location = 'eastus2'
-$deploymentName = 'fdrycodex-deploy'
+az group create --name 'rg-fdrycodex' --location 'eastus2' | Out-Null
 
-az group create --name $resourceGroup --location $location | Out-Null
-
-az deployment group create `
-    --name $deploymentName `
-    --resource-group $resourceGroup `
-    --template-file './main.bicep' `
-    --parameters './main.bicepparam'
+az deployment group create --name 'fdrycodex-deploy' --resource-group 'rg-fdrycodex' --template-file './main.bicep' --parameters './main.bicepparam'
