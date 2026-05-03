@@ -9,24 +9,26 @@
 #   CODEX_PROMPT           - Prompt to run after setup
 
 param(
+    [string]$ApiKey   = $env:AZURE_OPENAI_API_KEY,
+    [string]$Endpoint = $env:AZURE_OPENAI_ENDPOINT,
     [string]$Model    = $env:CODEX_MODEL ?? "gpt-5-codex",
     [string]$Prompt   = $env:CODEX_PROMPT ?? ""
 )
 
 $ErrorActionPreference = 'Stop'
 
-$ApiKey   = $env:AZURE_OPENAI_API_KEY
-$Endpoint = $env:AZURE_OPENAI_ENDPOINT
-
 if (-not $ApiKey) {
-    Write-Error "AZURE_OPENAI_API_KEY is not set."
+    Write-Error "AZURE_OPENAI_API_KEY is not set. Pass -ApiKey or set the environment variable."
     exit 1
 }
 
 if (-not $Endpoint) {
-    Write-Error "AZURE_OPENAI_ENDPOINT is not set."
+    Write-Error "AZURE_OPENAI_ENDPOINT is not set. Pass -Endpoint or set the environment variable."
     exit 1
 }
+
+# Export the API key so codex (which reads env_key = AZURE_OPENAI_API_KEY) can find it
+$env:AZURE_OPENAI_API_KEY = $ApiKey
 
 $BaseUrl = $Endpoint.TrimEnd('/') + '/openai'
 

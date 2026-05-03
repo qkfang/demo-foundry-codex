@@ -16,8 +16,18 @@ param codexModelName string = 'gpt-5-codex'
 @description('Codex model version')
 param codexModelVersion string = '2025-09-15'
 
+@description('Chat model deployment name')
+param chatDeploymentName string = 'gpt-4.1'
+
+@description('Chat model name in the OpenAI catalog')
+param chatModelName string = 'gpt-4.1'
+
+@description('Chat model version')
+param chatModelVersion string = '2025-04-14'
+
 var commonTags = {
   workload: 'foundry-codex-demo'
+  SecurityControl: 'Ignore'
 }
 
 var foundryName = '${baseName}-foundry'
@@ -31,6 +41,9 @@ module foundry 'foundry.bicep' = {
     codexDeploymentName: codexDeploymentName
     codexModelName: codexModelName
     codexModelVersion: codexModelVersion
+    chatDeploymentName: chatDeploymentName
+    chatModelName: chatModelName
+    chatModelVersion: chatModelVersion
   }
 }
 

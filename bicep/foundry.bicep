@@ -19,6 +19,18 @@ param codexModelVersion string = '2025-09-15'
 @description('Capacity (TPM in thousands) for the Codex deployment')
 param codexCapacity int = 100
 
+@description('Chat model deployment name (used by the chatbot agent; must support code_interpreter)')
+param chatDeploymentName string = 'gpt-4.1'
+
+@description('Chat model name in the OpenAI catalog')
+param chatModelName string = 'gpt-4.1'
+
+@description('Chat model version')
+param chatModelVersion string = '2025-04-14'
+
+@description('Capacity (TPM in thousands) for the chat deployment')
+param chatCapacity int = 100
+
 resource foundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   name: name
   location: location
@@ -69,9 +81,29 @@ resource codexDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
   }
 }
 
+resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundry
+  name: chatDeploymentName
+  sku: {
+    name: 'GlobalStandard'
+    capacity: chatCapacity
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: chatModelName
+      version: chatModelVersion
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    raiPolicyName: 'Microsoft.DefaultV2'
+  }
+  dependsOn: [codexDeployment]
+}
+
 output accountName string = foundry.name
 output accountEndpoint string = foundry.properties.endpoint
 output projectName string = project.name
 output projectEndpoint string = project.properties.endpoints['AI Foundry API']
 output deploymentName string = codexDeployment.name
+output chatDeploymentName string = chatDeployment.name
 output principalId string = foundry.identity.principalId

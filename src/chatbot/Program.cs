@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 var endpoint = app.Configuration["FoundryProjectEndpoint"]
@@ -16,7 +17,6 @@ var endpoint = app.Configuration["FoundryProjectEndpoint"]
 var deploymentName = app.Configuration["CodexDeploymentName"]
     ?? throw new InvalidOperationException("CodexDeploymentName is not set.");
 var tenantId = app.Configuration["TenantId"];
-
 var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
 {
     TenantId = tenantId,
@@ -35,9 +35,9 @@ var agentDefinition = new DeclarativeAgentDefinition(model: deploymentName)
 {
     Instructions = instructions
 };
-var container = new CodeInterpreterToolContainer(
-    CodeInterpreterToolContainerConfiguration.CreateAutomaticContainerConfiguration());
-agentDefinition.Tools.Add(ResponseTool.CreateCodeInterpreterTool(container));
+// var container = new CodeInterpreterToolContainer(
+//     CodeInterpreterToolContainerConfiguration.CreateAutomaticContainerConfiguration());
+// agentDefinition.Tools.Add(ResponseTool.CreateCodeInterpreterTool(container));
 
 var agentVersion = projectClient.AgentAdministrationClient
     .CreateAgentVersion(agentId, new ProjectsAgentVersionCreationOptions(agentDefinition))
