@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codex Chat</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 14px 20px;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #1e66f5;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background: #fff;
+      color: #1e1e2e;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .text-block { white-space: pre-wrap; }
+
+    .code-block, .output-block {
+      margin-top: 10px;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.85rem;
+    }
+
+    .block-label {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .code-block .block-label { background: #313244; color: #cba6f7; }
+    .output-block .block-label { background: #2a2a3c; color: #a6e3a1; }
+
+    .code-block pre, .output-block pre {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 10px 12px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    }
+
+    .output-block pre { color: #a6e3a1; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: #7c7f93;
+    }
+
+    .spinner {
+      width: 10px; height: 10px;
+      border: 2px solid #cba6f7;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-block {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: #fdf2f2;
+      border-left: 3px solid #f38ba8;
+      border-radius: 4px;
+      color: #d20f39;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+    }
+
+    #input-area {
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px;
+      background: #fff;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    #input-area textarea {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      resize: none;
+      font-size: 0.95rem;
+      font-family: inherit;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.2s;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    #input-area textarea:focus { border-color: #1e66f5; }
+
+    #send-btn {
+      padding: 10px 20px;
+      background: #1e66f5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: background 0.2s;
+      align-self: flex-end;
+    }
+
+    #send-btn:hover:not(:disabled) { background: #1558d6; }
+    #send-btn:disabled { background: #a0b4e0; cursor: default; }
+  </style>
+</head>
+<body>
+  <header>Codex Chat</header>
+  <div id="messages"></div>
+  <div id="input-area">
+    <textarea id="user-input" rows="2" placeholder="Ask me to write and run code…"></textarea>
+    <button id="send-btn">Send</button>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    let previousResponseId = null;
+
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function addMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      if (text) {
+        const t = document.createElement('div');
+        t.className = 'text-block';
+        t.textContent = text;
+        div.appendChild(t);
+      }
+      messagesEl.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
+
+    function getOrCreateTextBlock(msgEl) {
+      let t = msgEl.querySelector('.text-block:last-of-type');
+      if (!t || t.nextElementSibling) {
+        t = document.createElement('div');
+        t.className = 'text-block';
+        msgEl.appendChild(t);
+      }
+      return t;
+    }
+
+    function getOrCreateCodeBlock(msgEl) {
+      let cb = msgEl.querySelector('.code-block:last-child');
+      if (!cb) {
+        cb = document.createElement('div');
+        cb.className = 'code-block';
+        cb.innerHTML = '<div class="block-label">Code</div><pre></pre>';
+        msgEl.appendChild(cb);
+      }
+      return cb.querySelector('pre');
+    }
+
+    function addOutputBlock(msgEl, text) {
+      const ob = document.createElement('div');
+      ob.className = 'output-block';
+      ob.innerHTML = '<div class="block-label">Output</div><pre></pre>';
+      ob.querySelector('pre').textContent = text;
+      msgEl.appendChild(ob);
+    }
+
+    function addStatus(msgEl, text, withSpinner) {
+      let s = msgEl.querySelector('.status-badge');
+      if (!s) {
+        s = document.createElement('div');
+        s.className = 'status-badge';
+        msgEl.appendChild(s);
+      }
+      s.innerHTML = (withSpinner ? '<span class="spinner"></span>' : '') + text;
+    }
+
+    function removeStatus(msgEl) {
+      const s = msgEl.querySelector('.status-badge');
+      if (s) s.remove();
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      inputEl.value = '';
+      inputEl.style.height = '';
+      sendBtn.disabled = true;
+
+      addMessage('user', text);
+      const assistantEl = addMessage('assistant', '');
+      addStatus(assistantEl, 'Thinking…', true);
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, previousResponseId })
+      });
+
+      if (!response.ok || !response.body) {
+        addStatus(assistantEl, 'Request failed.', false);
+        sendBtn.disabled = false;
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let codePreEl = null;
+      let statusRemoved = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const evt = JSON.parse(line.slice(6));
+
+          if (!statusRemoved) {
+            removeStatus(assistantEl);
+            statusRemoved = true;
+          }
+
+          switch (evt.type) {
+            case 'text': {
+              const t = getOrCreateTextBlock(assistantEl);
+              t.textContent += evt.content;
+              break;
+            }
+            case 'code_start':
+              addStatus(assistantEl, 'Writing code…', true);
+              codePreEl = getOrCreateCodeBlock(assistantEl);
+              break;
+
+            case 'code_delta':
+              if (!codePreEl) codePreEl = getOrCreateCodeBlock(assistantEl);
+              codePreEl.textContent += evt.content;
+              break;
+
+            case 'code_running':
+              addStatus(assistantEl, 'Running code…', true);
+              break;
+
+            case 'code_output':
+              removeStatus(assistantEl);
+              addOutputBlock(assistantEl, evt.content);
+              codePreEl = null;
+              break;
+
+            case 'error': {
+              removeStatus(assistantEl);
+              const e = document.createElement('div');
+              e.className = 'error-block';
+              e.textContent = evt.content;
+              assistantEl.appendChild(e);
+              break;
+            }
+
+            case 'done':
+              removeStatus(assistantEl);
+              if (evt.responseId) previousResponseId = evt.responseId;
+              break;
+          }
+
+          scrollToBottom();
+        }
+      }
+
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+    });
+  </script>
+</body>
+</html>
