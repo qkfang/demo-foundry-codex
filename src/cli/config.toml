@@ -1,0 +1,16 @@
+# Codex CLI configuration for Azure AI Foundry
+# Copy this file to ~/.codex/config.toml
+
+# Azure deployment name (not the model family name)
+model = "gpt-5-codex"
+model_provider = "azure"
+model_reasoning_effort = "medium"
+
+[model_providers.azure]
+name = "Azure OpenAI"
+# Azure AI Foundry endpoint: https://<your-resource>.openai.azure.com/openai
+# or for newer AI Foundry resources: https://<your-resource>.cognitiveservices.azure.com/openai
+base_url = "https://<your-resource>.openai.azure.com/openai"
+env_key = "AZURE_OPENAI_API_KEY"
+query_params = { api-version = "2025-04-01-preview" }
+wire_api = "responses"
